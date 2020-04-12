@@ -1,0 +1,246 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(plotly)
+library(ggrepel)
+df <- read_csv("covid_19_clean_complete.csv")
+pop <- read.csv("API_SP.POP.TOTL_DS2_en_csv_v2_936048.csv")
+pop <- tibble(country = pop$Country.Name, pop = pop$X2018)
+tests <- read_csv("full-list-covid-19-tests-per-day.csv") %>%
+  mutate(tests = `Daily change in cumulative total tests`)
+options(scipen=999)
+```
+
+
+```{r}
+covid = df %>%
+  mutate(Date = mdy(Date)) %>%
+  group_by(`Country/Region`, Date) %>%
+  summarise(Confirmed = sum(Confirmed, na.rm = T),
+            Deaths = sum(Deaths, na.rm = T),
+            Recovered = sum(Recovered, na.rm = T)) %>%
+  arrange(`Country/Region`, Date)
+
+
+final = covid %>%
+  group_by(`Country/Region`) %>%
+  filter(Confirmed >= 100) %>%
+  mutate(hunfirst = if_else( Date == min(Date), 1, 0),
+         days_since_hun = row_number(),
+         marginal_confirmed = Confirmed - lag(Confirmed)) %>%
+  left_join( pop %>%
+               mutate(country = case_when(
+                 country == "United States" ~ "US",
+                 country == "Korea, Rep." ~ "South Korea",
+                 TRUE ~ as.character(country))), 
+             by = c("Country/Region" = "country")) %>%
+  drop_na() %>%
+  mutate(confirmed_permil = Confirmed/pop*1000000,
+         deaths_permil = Deaths/pop*1000000,
+         marginal_confirmed_permil = confirmed_permil - lag(confirmed_permil)) %>%
+  left_join(tests %>%
+              mutate(Date = mdy(Date),
+                     Entity = if_else(Entity == "United States", "US", Entity)) %>%
+              select(Entity, Date, tests), by = c("Country/Region" = "Entity", "Date"))
+
+
+final = final %>%
+  left_join(final %>%
+              filter(confirmed_permil >= 20) %>%
+              group_by(`Country/Region`) %>%
+              mutate(days_sinc_twcon = row_number()))
+
+write_csv(final, "covid_final.csv")
+  
+
+```
+
+
+
+
+
+
+
+```{r}
+graph_confirmed = final %>%
+  filter(`Country/Region` %in% c("US", "China", "Italy", "Spain", "Germany", "France", "Israel", "Sweden", "Japan", "United Kingdom", "South Korea"),
+         days_since_hun < 60) %>%
+  ggplot(aes(x = days_since_hun, y = Confirmed, color = `Country/Region`)) + 
+  geom_line() + scale_y_log10() + 
+  theme_minimal() 
+  
+
+last = final %>%
+  filter(`Country/Region` %in% c("US", "China", "Italy", "Spain", "Germany", "France", "Israel", "Sweden", "Japan", "United Kingdom", "South Korea"),
+         days_since_hun < 60) %>%
+  group_by(`Country/Region`) %>%
+  filter(days_since_hun == max(days_since_hun))
+
+graph = graph_confirmed + 
+  geom_text(aes(x = days_since_hun + 2, y = Confirmed, color = `Country/Region`, label = `Country/Region`), data = last, check_overlap = TRUE) +
+  theme(legend.position = "none") + 
+  labs(title = "Confirmed cases by days since 100th case", x = "", y = "")
+
+
+  
+  
+plotly = plotly_build(graph)
+plotly$height = 900
+plotly$width = 1100
+plotly$sizingPolicy$defaultWidth = 1100
+plotly$sizingPolicy$defaultHeight = 900
+plotly
+ 
+```
+
+
+
+
+```{r}
+graph_confirmed = final %>%
+  filter(`Country/Region` %in% c("US", "China", "Italy", "Spain", "Germany", "France", "Israel", "Sweden", "Japan", "United Kingdom", "South Korea"),
+         days_since_hun < 60) %>%
+  ggplot(aes(x = days_since_hun, y = marginal_confirmed, color = `Country/Region`)) + 
+  geom_smooth(se=F) + scale_y_log10() + 
+  theme_minimal() 
+  
+
+
+graph = graph_confirmed + 
+  geom_text(aes(x = days_since_hun + 2, y = marginal_confirmed, color = `Country/Region`, label = `Country/Region`), data = last, check_overlap = TRUE) + 
+  theme(legend.position = "none") + 
+  labs(title = "Marginal confirmed cases by days since 100th case", x = "", y = "")
+
+
+  
+  
+plotly = plotly_build(graph)
+plotly$height = 900
+plotly$width = 1100
+plotly$sizingPolicy$defaultWidth = 1100
+plotly$sizingPolicy$defaultHeight = 900
+plotly
+```
+
+
+
+
+
+```{r}
+graph_confirmed = final %>%
+  filter(`Country/Region` %in% c("US", "China", "Italy", "Spain", "Germany", "France", "Israel", "Sweden", "Japan", "United Kingdom", "South Korea"),
+         days_since_hun < 60) %>%
+  ggplot(aes(x = days_sinc_twcon, y = confirmed_permil, color = `Country/Region`)) + 
+  geom_line() + scale_y_log10() + 
+  theme_minimal() 
+  
+
+
+graph = graph_confirmed + 
+  geom_text(aes(x = days_sinc_twcon + 2, y = confirmed_permil, color = `Country/Region`, label = `Country/Region`), data = last, check_overlap = TRUE) + 
+  theme(legend.position = "none") + 
+  labs(title = "Confirmed per 1M cases by days since 20th case per 1M", x = "", y = "")
+
+
+  
+  
+plotly = plotly_build(graph)
+plotly$height = 900
+plotly$width = 1100
+plotly$sizingPolicy$defaultWidth = 1100
+plotly$sizingPolicy$defaultHeight = 900
+plotly
+ 
+```
+
+
+```{r}
+graph_confirmed = final %>%
+  filter(`Country/Region` %in% c("US", "China", "Italy", "Spain", "Germany", "France", "Israel", "Sweden", "Japan", "United Kingdom", "South Korea"),
+         days_since_hun < 60) %>%
+  ggplot(aes(x = days_sinc_twcon, y = marginal_confirmed_permil, color = `Country/Region`)) + 
+  geom_smooth(se=F) + scale_y_log10() + 
+  theme_minimal() 
+  
+
+
+graph = graph_confirmed + 
+  geom_text(aes(x = days_sinc_twcon + 2, y = marginal_confirmed_permil, color = `Country/Region`, label = `Country/Region`), data = last, check_overlap = TRUE) + 
+  theme(legend.position = "none") + 
+  labs(title = "Marginal confirmed per 1M cases by days since 20th case per 1M", x = "", y = "")
+
+
+  
+  
+plotly = plotly_build(graph)
+plotly$height = 900
+plotly$width = 1100
+plotly$sizingPolicy$defaultWidth = 1100
+plotly$sizingPolicy$defaultHeight = 900
+plotly
+ 
+```
+
+
+
+
+
+
+
+
+```{r}
+graph_confirmed = final %>%
+  filter(`Country/Region` %in% c("US", "China", "Italy", "Spain", "Germany", "France", "Israel", "Sweden", "Japan", "United Kingdom", "South Korea"),
+         days_since_hun < 60,
+         !is.na(tests)) %>%
+  ggplot(aes(x = days_since_hun, y = marginal_confirmed/tests, color = `Country/Region`)) + 
+  geom_smooth(se = F) + scale_y_log10() + 
+  theme_minimal() 
+  
+
+
+graph = graph_confirmed + 
+  geom_text(aes(x = days_since_hun + 2, y = marginal_confirmed/tests, color = `Country/Region`, label = `Country/Region`), data = last, check_overlap = TRUE) + 
+  theme(legend.position = "none") + 
+  labs(title = "% of tests confirmed by days since 100th confirmed", x = "", y = "")
+
+
+  
+  
+plotly = plotly_build(graph)
+plotly$height = 900
+plotly$width = 1200
+plotly$sizingPolicy$defaultWidth = 1200
+plotly$sizingPolicy$defaultHeight = 900
+plotly
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
