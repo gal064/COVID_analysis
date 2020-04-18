@@ -14,6 +14,7 @@ library(tidyverse)
 library(lubridate)
 library(plotly)
 library(ggrepel)
+countries = c("Austria", "Belgium", "Czechia", "Denmark", "Estonia", "Finland", "France", "Germany", "Greece", "Hungary", "Iceland", "Ireland", "Italy", "Latvia", "Luxembourg", "Netherlands", "Norway", "Poland", "Portugal", "Slovakia", "Slovenia", "Spain", "Sweden", "Switzerland", "United Kingdom", "Canada", "Chile", "Mexico", "Australia", "Japan", "New Zealand", "Israel", "Turkey", "US", "South Korea", "China", "Taiwan*")
 df <- read_csv("covid_19_clean_complete.csv")
 pop <- read.csv("API_SP.POP.TOTL_DS2_en_csv_v2_936048.csv")
 pop <- tibble(country = pop$Country.Name, pop = pop$X2018)
@@ -78,7 +79,7 @@ write_csv(final, "covid_final.csv")
 
 ```{r}
 graph_confirmed <- final %>%
-  filter(`Country/Region` %in% c("US", "China", "Italy", "Spain", "Germany", "France", "Israel", "Sweden", "Japan", "United Kingdom", "South Korea"),
+  filter(`Country/Region` %in% countries,
          days_since_hun < 60) %>%
   ggplot(aes(x = days_since_hun, y = Confirmed, color = `Country/Region`)) + 
   geom_line() + scale_y_log10() + 
@@ -86,7 +87,7 @@ graph_confirmed <- final %>%
   
 
 last <- final %>%
-  filter(`Country/Region` %in% c("US", "China", "Italy", "Spain", "Germany", "France", "Israel", "Sweden", "Japan", "United Kingdom", "South Korea"),
+  filter(`Country/Region` %in% countries,
          days_since_hun < 60) %>%
   group_by(`Country/Region`) %>%
   filter(days_since_hun == max(days_since_hun))
@@ -113,7 +114,7 @@ plotly
 
 ```{r}
 graph_confirmed <- final %>%
-  filter(`Country/Region` %in% c("US", "China", "Italy", "Spain", "Germany", "France", "Israel", "Sweden", "Japan", "United Kingdom", "South Korea"),
+  filter(`Country/Region` %in% countries,
          days_since_hun < 60) %>%
   ggplot(aes(x = days_since_hun, y = marginal_confirmed, color = `Country/Region`)) + 
   geom_smooth(se=F) + scale_y_log10() + 
@@ -143,7 +144,7 @@ plotly
 
 ```{r}
 graph_confirmed <- final %>%
-  filter(`Country/Region` %in% c("US", "China", "Italy", "Spain", "Germany", "France", "Israel", "Sweden", "Japan", "United Kingdom", "South Korea"),
+  filter(`Country/Region` %in% countries,
          days_since_hun < 60) %>%
   ggplot(aes(x = days_sinc_twcon, y = confirmed_permil, color = `Country/Region`)) + 
   geom_line() + scale_y_log10() + 
@@ -169,43 +170,17 @@ plotly
 ```
 
 
-```{r}
+
+
+
+
+
+
+
+
+```{r eval=FALSE}
 graph_confirmed <- final %>%
-  filter(`Country/Region` %in% c("US", "China", "Italy", "Spain", "Germany", "France", "Israel", "Sweden", "Japan", "United Kingdom", "South Korea"),
-         days_since_hun < 60) %>%
-  ggplot(aes(x = days_sinc_twcon, y = marginal_confirmed_permil, color = `Country/Region`)) + 
-  geom_smooth(se=F) + scale_y_log10() + 
-  theme_minimal() 
-  
-
-
-graph <- graph_confirmed + 
-  geom_text(aes(x = days_sinc_twcon + 2, y = marginal_confirmed_permil, color = `Country/Region`, label = `Country/Region`), data = last, check_overlap = TRUE) + 
-  theme(legend.position = "none") + 
-  labs(title = "Marginal confirmed per 1M  by days since 20th case per 1M", x = "", y = "")
-
-
-  
-  
-plotly <- plotly_build(graph)
-plotly$height <- 900
-plotly$width <- 1100
-plotly$sizingPolicy$defaultWidth <- 1100
-plotly$sizingPolicy$defaultHeight <- 900
-plotly
- 
-```
-
-
-
-
-
-
-
-
-```{r}
-graph_confirmed <- final %>%
-  filter(`Country/Region` %in% c("US", "China", "Italy", "Spain", "Germany", "France", "Israel", "Sweden", "Japan", "United Kingdom", "South Korea"),
+  filter(`Country/Region` %in% countries,
          days_since_hun < 60,
          !is.na(tests)) %>%
   ggplot(aes(x = days_since_hun, y = marginal_confirmed/tests, color = `Country/Region`)) + 
@@ -232,7 +207,7 @@ plotly
 
 ```{r}
 graph_confirmed <- final %>%
-  filter(`Country/Region` %in% c("US", "China", "Italy", "Spain", "Germany", "France", "Israel", "Sweden", "Japan", "United Kingdom", "South Korea"),
+  filter(`Country/Region` %in% countries,
          days_since_hun < 60) %>%
   ggplot(aes(x = days_sinc_threed, y = deaths_permil, color = `Country/Region`)) + 
   geom_line() + scale_y_log10() + 
